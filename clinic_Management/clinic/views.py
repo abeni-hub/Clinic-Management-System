@@ -259,7 +259,224 @@ class PatientViewSet(viewsets.ModelViewSet):
             return self.get_paginated_response(serializer.data)
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
+        # ------------------ UPCOMING ENDPOINTS ------------------
+
+    @action(detail=False, methods=['get'])
+    def nurse_upcoming(self, request):
+        """
+        Patients with status 'registered' (waiting for nurse)
+        """
+        queryset = self.get_queryset().filter(status="Registered").only(
+            "id", "first_name", "last_name", "status", "created_at", "receptionist_id", "nurse_id", "doctor_id"
+        )
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def doctor_upcoming(self, request):
+        """
+        Patients with status 'vital_signed' (waiting for doctor)
+        """
+        queryset = self.get_queryset().filter(status="vital signs added").only(
+            "id", "first_name", "last_name", "status", "created_at", "receptionist_id", "nurse_id", "doctor_id"
+        )
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
     
+    @action(detail=False, methods=['get'])
+    def lab_payment(self, request):
+        """
+        Patients for lab with referral_type 'lab only' or 'both' and seen by doctor
+        """
+        queryset = self.get_queryset().filter(
+            status="seen by doctor",
+            doctor_details__referral_type__in=["lab only", "both"]
+        ).only(
+            "id", "first_name", "last_name", "status", "created_at",
+            "receptionist_id", "nurse_id", "doctor_id"
+        ).distinct()  # distinct in case multiple doctor_details
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def injection_payment(self, request):
+        """
+        Patients for injection with referral_type 'injection only' or 'both' 
+        and lab requested / injection pending (seen by doctor)
+        """
+        queryset = self.get_queryset().filter(
+            status="lab requested injection pending",
+            doctor_details__referral_type__in=["injection only", "both"]
+        ).only(
+            "id", "first_name", "last_name", "status", "created_at",
+            "receptionist_id", "nurse_id", "doctor_id"
+        ).distinct()
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+    @action(detail=False, methods=['get'])
+    def injection_upcoming(self, request):
+        """
+        Patients with status 'injection requested' or 'lab and injection requested'
+        """
+        statuses = ["injection requested", "lab and injection requested"]
+        queryset = self.get_queryset().filter(status__in=statuses).only(
+            "id", "first_name", "last_name", "status", "created_at",
+            "receptionist_id", "nurse_id", "doctor_id"
+        ).distinct()
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def injection_patient_list(self, request):
+        """
+        Patients with status 'injection requested', 'lab and injection requested', 'completed'
+        """
+        statuses = ["injection requested", "lab and injection requested", "completed"]
+        queryset = self.get_queryset().filter(status__in=statuses).only(
+            "id", "first_name", "last_name", "status", "created_at",
+            "receptionist_id", "nurse_id", "doctor_id"
+        ).distinct()
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def injection_today(self, request):
+        today = timezone.now().date()
+        statuses = ["injection requested", "lab and injection requested", "completed"]
+        queryset = self.get_queryset().filter(
+            status__in=statuses,
+            created_at__date=today
+        )
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def injection_weekly(self, request):
+        today = timezone.now().date()
+        start_week = today - timedelta(days=today.weekday())
+        end_week = start_week + timedelta(days=6)
+        statuses = ["injection requested", "lab and injection requested", "completed"]
+        queryset = self.get_queryset().filter(
+            status__in=statuses,
+            created_at__date__range=[start_week, end_week]
+        )
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def injection_monthly(self, request):
+        today = timezone.now().date()
+        statuses = ["injection requested", "lab and injection requested", "completed"]
+        queryset = self.get_queryset().filter(
+            status__in=statuses,
+            created_at__year=today.year,
+            created_at__month=today.month
+        )
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+    # ------------------ LAB ENDPOINTS ------------------
+
+    @action(detail=False, methods=['get'])
+    def lab_upcoming(self, request):
+        """
+        Patients with status 'lab requested' or 'lab and injection requested'
+        """
+        statuses = ["lab requested", "lab and injection requested"]
+        queryset = self.get_queryset().filter(status__in=statuses).only(
+            "id", "first_name", "last_name", "status", "created_at",
+            "receptionist_id", "nurse_id", "doctor_id"
+        ).distinct()
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def lab_today(self, request):
+        today = timezone.now().date()
+        statuses = ["lab requested", "lab and injection requested"]
+        queryset = self.get_queryset().filter(
+            status__in=statuses,
+            created_at__date=today
+        )
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def lab_weekly(self, request):
+        today = timezone.now().date()
+        start_week = today - timedelta(days=today.weekday())
+        end_week = start_week + timedelta(days=6)
+        statuses = ["lab requested", "lab and injection requested"]
+        queryset = self.get_queryset().filter(
+            status__in=statuses,
+            created_at__date__range=[start_week, end_week]
+        )
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def lab_monthly(self, request):
+        today = timezone.now().date()
+        statuses = ["lab requested", "lab and injection requested"]
+        queryset = self.get_queryset().filter(
+            status__in=statuses,
+            created_at__year=today.year,
+            created_at__month=today.month
+        )
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
