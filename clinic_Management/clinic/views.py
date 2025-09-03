@@ -26,11 +26,17 @@ from .models import (
     )
 from .models import Department  , Tariff , Medication ,CBCSample ,TWBCSample ,HGBSample ,ESRSample,BloodGroupSample,StoneExamSample,ConcentrationSample,OccultBloodSample ,PhysicalTestSample ,ChemicalTestSample,MicroscopicTestSample,HCGUrineSample,HCGSerumSample,FBSRBSSample,SGOTASTSample,SGPTALTSample,BilirubinTSample,BilirubinDSample,ALPSample,CreatinineSample,UreaSample,UricAcidSample,LipaseAmylaseSample,TotalCholesterolSample,TriglyceridesSample,LDLCSample,HDLCSample,SodiumSample,PotassiumSample, CalciumSample , WidalTestHSample , WidalTestOSample,WeilFelixTestSample,VDRLRPRTestSample,TPHATestSample ,HPyloriAntibodySample,HPyloriStoolAntigenSample,HBsAgTestSample,HCVAgTestSample,RheumatoidFactorSample, ASOTiterSample,KHBRapidTestSample,AFBTestSample, TBBloodTestSample,GramStainTestSample,WetMountTestSample,KOHPreparationSample,CultureTestSample,BFSample
 from django.http import Http404 
-from rest_framework import views, viewsets
+from rest_framework import views, viewsets , filters
 from rest_framework.generics import ListAPIView
 from rest_framework.decorators import api_view
 from django.shortcuts import get_object_or_404
 from django.shortcuts import redirect , render
+from rest_framework.pagination import PageNumberPagination
+from django_filters.rest_framework import DjangoFilterBackend
+from django.db.models import Prefetch
+from rest_framework.decorators import action
+from django.utils import timezone
+from datetime import timedelta
 
 class DepartmentViewSet(viewsets.ModelViewSet):
     queryset = Department.objects.all()
@@ -188,6 +194,12 @@ class PatientViewSet(viewsets.ModelViewSet):
     queryset = Patient.objects.all()
     serializer_class = PatientSerializer
 
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['receptionist', 'nurse', 'doctor', 'department']  
+    search_fields = ['first_name', 'last_name', 'phone_number']  
+    ordering_fields = ['created_at', 'updated_at']  
+    ordering = ['-created_at'] 
+
     def get_queryset(self):
         queryset = super().get_queryset()
         # Your existing filtering logic...
@@ -210,7 +222,44 @@ class PatientViewSet(viewsets.ModelViewSet):
             'payments'
         )
         return queryset
+    @action(detail=False, methods=['get'])
+    def today(self, request):
+        today = timezone.now().date()
+        queryset = self.get_queryset().filter(created_at__date=today)
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
 
+    @action(detail=False, methods=['get'])
+    def weekly(self, request):
+        today = timezone.now().date()
+        start_week = today - timedelta(days=today.weekday())
+        end_week = start_week + timedelta(days=6)
+        queryset = self.get_queryset().filter(created_at__date__range=[start_week, end_week])
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def monthly(self, request):
+        today = timezone.now().date()
+        queryset = self.get_queryset().filter(
+            created_at__year=today.year,
+            created_at__month=today.month
+        )
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+    
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -257,6 +306,13 @@ class PatientNurseDetailsViewSet(viewsets.ModelViewSet):
     queryset = PatientNurseDetails.objects.all()
     serializer_class = PatientNurseDetailsSerializer
 
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['patient', 'nurse']  # exact matches
+    search_fields = ['patient__first_name', 'patient__last_name', 'nurse__first_name']
+    ordering_fields = ['id']  # or any valid field
+    ordering = ['-id']
+
+
     def get_queryset(self):
         queryset = super().get_queryset()
         patient_id = self.request.query_params.get('patient')
@@ -267,7 +323,51 @@ class PatientNurseDetailsViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(nurse_id=nurse_id)
         queryset = queryset.select_related('patient', 'nurse')
         return queryset
+    @action(detail=False, methods=['get'])
+    def today(self, request):
+        today = timezone.now().date()
+        queryset = self.get_queryset().filter(visit_date=today)
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
 
+    @action(detail=False, methods=['get'])
+    def weekly(self, request):
+        today = timezone.now().date()
+        start_week = today - timedelta(days=today.weekday())
+        end_week = start_week + timedelta(days=6)
+        queryset = self.get_queryset().filter(visit_date__range=[start_week, end_week])
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def monthly(self, request):
+        today = timezone.now().date()
+        queryset = self.get_queryset().filter(
+            visit_date__year=today.year,
+            visit_date__month=today.month
+        )
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def upcoming(self, request):
+        """Get upcoming patients from Patient table with status='registered'."""
+        upcoming_patients = Patient.objects.filter(status="registered")
+        # Reuse PatientSerializer for consistent response
+        serializer = PatientSerializer(upcoming_patients, many=True)
+        return Response(serializer.data)
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -337,6 +437,13 @@ class DoctorViewSet(viewsets.ModelViewSet):
 class DoctorDetailsViewSet(viewsets.ModelViewSet):
     queryset = DoctorDetails.objects.all()
     serializer_class = DoctorDetailsSerializer
+
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['patient', 'doctor', 'referral_type']   # exact matches
+    search_fields = ['patient__first_name', 'patient__last_name', 'doctor__first_name', 'doctor__last_name']
+    ordering_fields = ['visit_date']   # use fields that exist
+    ordering = ['-visit_date']
+
 
     def get_queryset(self):
         queryset = super().get_queryset()
@@ -2276,6 +2383,13 @@ class InjectionRoomViewSet(viewsets.ModelViewSet):
     queryset = InjectionRoom.objects.all()
     serializer_class = InjectionRoomSerializer
 
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['doctor_details', 'nurse', 'doctor_details__patient']  # nested lookups allowed
+    search_fields = ['doctor_details__patient__first_name', 'doctor_details__patient__last_name', 'nurse__first_name']
+    ordering_fields = ['id']  
+    ordering = ['-id']
+
+
     def get_queryset(self):
         queryset = super().get_queryset()
         patient_id = self.request.query_params.get('patient')
@@ -2312,6 +2426,8 @@ class InjectionRoomViewSet(viewsets.ModelViewSet):
 class AppointmentViewSet(viewsets.ModelViewSet):
     queryset = Appointment.objects.all()
     serializer_class = AppointmentSerializer
+    pagination_class = None
+    filter_backends = []
 
     def get_queryset(self):
         queryset = super().get_queryset()
@@ -2351,6 +2467,14 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 class PaymentViewSet(viewsets.ModelViewSet):
     queryset = Payment.objects.all()
     serializer_class = PaymentSerializer
+
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['patient', 'receptionist']
+    search_fields = ['patient__first_name', 'patient__last_name', 'receptionist__first_name']
+    ordering_fields = ['id', 'amount']  
+    ordering = ['-id']
+
+
 
     def get_queryset(self):
         queryset = super().get_queryset()
@@ -2432,6 +2556,8 @@ class LabTestViewSet(viewsets.ModelViewSet):
 class TariffViewSet(viewsets.ModelViewSet):
     queryset = Tariff.objects.all()
     serializer_class = TariffSerializer
+    pagination_class = None
+    filter_backends = []
 
 class MedicationViewSet(viewsets.ModelViewSet):
     queryset = Medication.objects.all()
@@ -2475,6 +2601,9 @@ class MedicationPriceViewSet(viewsets.ModelViewSet):
     queryset = MedicationPrice.objects.all()
     serializer_class = MedicationPriceSerializer
 
+    pagination_class = None
+    filter_backends = []
+
     def get_queryset(self):
         queryset = super().get_queryset()
         tariff_id = self.request.query_params.get('tariff')
@@ -2486,3 +2615,5 @@ class MedicationPriceViewSet(viewsets.ModelViewSet):
 class MaterialViewSet(viewsets.ModelViewSet):
     queryset = Material.objects.all()
     serializer_class = MaterialSerializer
+    pagination_class = None
+    filter_backends = []
