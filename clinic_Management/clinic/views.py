@@ -377,6 +377,7 @@ class PatientViewSet(viewsets.ModelViewSet):
             return self.get_paginated_response(serializer.data)
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
+    
 
     @action(detail=False, methods=['get'])
     def injection_weekly(self, request):
@@ -444,6 +445,7 @@ class PatientViewSet(viewsets.ModelViewSet):
             return self.get_paginated_response(serializer.data)
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
+        
 
     @action(detail=False, methods=['get'])
     def lab_weekly(self, request):
@@ -461,6 +463,7 @@ class PatientViewSet(viewsets.ModelViewSet):
             return self.get_paginated_response(serializer.data)
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
+    
 
     @action(detail=False, methods=['get'])
     def lab_monthly(self, request):
@@ -477,6 +480,59 @@ class PatientViewSet(viewsets.ModelViewSet):
             return self.get_paginated_response(serializer.data)
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
+    
+    
+    @action(detail=False, methods=['get'])
+    def doctor_follow_up(self, request):
+        """
+        Patients for doctor follow-up: 'lab reviewed', 'injection reviewed', 'lab and injection reviewed'
+        """
+        statuses = ["lab reviewed", "injection reviewed", "lab and injection reviewed"]
+        queryset = self.get_queryset().filter(status__in=statuses).only(
+            "id", "first_name", "last_name", "status", "created_at",
+            "receptionist_id", "nurse_id", "doctor_id"
+        ).distinct()
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def doctor_lab_follow_up(self, request):
+        """
+        Patients for doctor lab follow-up: 'lab reviewed', 'lab and injection reviewed'
+        """
+        statuses = ["lab reviewed", "lab and injection reviewed"]
+        queryset = self.get_queryset().filter(status__in=statuses).only(
+            "id", "first_name", "last_name", "status", "created_at",
+            "receptionist_id", "nurse_id", "doctor_id"
+        ).distinct()
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def doctor_injection_follow_up(self, request):
+        """
+        Patients for doctor injection follow-up: 'injection reviewed', 'lab and injection reviewed'
+        """
+        statuses = ["injection reviewed", "lab and injection reviewed"]
+        queryset = self.get_queryset().filter(status__in=statuses).only(
+            "id", "first_name", "last_name", "status", "created_at",
+            "receptionist_id", "nurse_id", "doctor_id"
+        ).distinct()
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+    
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
