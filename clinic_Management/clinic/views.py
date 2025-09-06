@@ -37,6 +37,8 @@ from django.db.models import Prefetch
 from rest_framework.decorators import action
 from django.utils import timezone
 from datetime import timedelta
+from django.db.models import Q
+
 
 class DepartmentViewSet(viewsets.ModelViewSet):
     queryset = Department.objects.all()
@@ -226,6 +228,8 @@ class PatientViewSet(viewsets.ModelViewSet):
     def today(self, request):
         today = timezone.now().date()
         queryset = self.get_queryset().filter(created_at__date=today)
+        for backend in (DjangoFilterBackend(), filters.SearchFilter()):
+            queryset = backend.filter_queryset(self.request, queryset, self)
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
@@ -239,6 +243,8 @@ class PatientViewSet(viewsets.ModelViewSet):
         start_week = today - timedelta(days=today.weekday())
         end_week = start_week + timedelta(days=6)
         queryset = self.get_queryset().filter(created_at__date__range=[start_week, end_week])
+        for backend in (DjangoFilterBackend(), filters.SearchFilter()):
+            queryset = backend.filter_queryset(self.request, queryset, self)
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
@@ -253,6 +259,8 @@ class PatientViewSet(viewsets.ModelViewSet):
             created_at__year=today.year,
             created_at__month=today.month
         )
+        for backend in (DjangoFilterBackend(), filters.SearchFilter()):
+            queryset = backend.filter_queryset(self.request, queryset, self)
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
@@ -269,6 +277,8 @@ class PatientViewSet(viewsets.ModelViewSet):
         queryset = self.get_queryset().filter(status="Registered").only(
             "id", "first_name", "last_name", "status", "created_at", "receptionist_id", "nurse_id", "doctor_id"
         )
+        for backend in (DjangoFilterBackend(), filters.SearchFilter()):
+            queryset = backend.filter_queryset(self.request, queryset, self)
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
@@ -284,6 +294,8 @@ class PatientViewSet(viewsets.ModelViewSet):
         queryset = self.get_queryset().filter(status="vital signs added").only(
             "id", "first_name", "last_name", "status", "created_at", "receptionist_id", "nurse_id", "doctor_id"
         )
+        for backend in (DjangoFilterBackend(), filters.SearchFilter()):
+            queryset = backend.filter_queryset(self.request, queryset, self)
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
@@ -297,12 +309,12 @@ class PatientViewSet(viewsets.ModelViewSet):
         Patients for lab with referral_type 'lab only' or 'both' and seen by doctor
         """
         queryset = self.get_queryset().filter(
-            status="seen by doctor",
-            doctor_details__referral_type__in=["lab only", "both"]
-        ).only(
-            "id", "first_name", "last_name", "status", "created_at",
-            "receptionist_id", "nurse_id", "doctor_id"
-        ).distinct()  # distinct in case multiple doctor_details
+            Q(status="seen by doctor") &
+            Q(doctor_details__referral_type__in=["lab only", "both"])
+        ).distinct()
+         # distinct in case multiple doctor_details
+        for backend in (DjangoFilterBackend(), filters.SearchFilter()):
+            queryset = backend.filter_queryset(self.request, queryset, self)
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
@@ -317,12 +329,11 @@ class PatientViewSet(viewsets.ModelViewSet):
         and lab requested / injection pending (seen by doctor)
         """
         queryset = self.get_queryset().filter(
-            status="lab requested injection pending",
-            doctor_details__referral_type__in=["injection only", "both"]
-        ).only(
-            "id", "first_name", "last_name", "status", "created_at",
-            "receptionist_id", "nurse_id", "doctor_id"
+            Q(status__in=["lab requested", "injection pending"]) &
+            Q(doctor_details__referral_type__in=["injection only", "both"])
         ).distinct()
+        for backend in (DjangoFilterBackend(), filters.SearchFilter()):
+            queryset = backend.filter_queryset(self.request, queryset, self)
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
@@ -339,6 +350,8 @@ class PatientViewSet(viewsets.ModelViewSet):
             "id", "first_name", "last_name", "status", "created_at",
             "receptionist_id", "nurse_id", "doctor_id"
         ).distinct()
+        for backend in (DjangoFilterBackend(), filters.SearchFilter()):
+            queryset = backend.filter_queryset(self.request, queryset, self)
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
@@ -356,6 +369,8 @@ class PatientViewSet(viewsets.ModelViewSet):
             "id", "first_name", "last_name", "status", "created_at",
             "receptionist_id", "nurse_id", "doctor_id"
         ).distinct()
+        for backend in (DjangoFilterBackend(), filters.SearchFilter()):
+            queryset = backend.filter_queryset(self.request, queryset, self)
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
@@ -371,6 +386,8 @@ class PatientViewSet(viewsets.ModelViewSet):
             status__in=statuses,
             created_at__date=today
         )
+        for backend in (DjangoFilterBackend(), filters.SearchFilter()):
+            queryset = backend.filter_queryset(self.request, queryset, self)
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
@@ -389,6 +406,8 @@ class PatientViewSet(viewsets.ModelViewSet):
             status__in=statuses,
             created_at__date__range=[start_week, end_week]
         )
+        for backend in (DjangoFilterBackend(), filters.SearchFilter()):
+            queryset = backend.filter_queryset(self.request, queryset, self)
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
@@ -405,6 +424,8 @@ class PatientViewSet(viewsets.ModelViewSet):
             created_at__year=today.year,
             created_at__month=today.month
         )
+        for backend in (DjangoFilterBackend(), filters.SearchFilter()):
+            queryset = backend.filter_queryset(self.request, queryset, self)
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
@@ -424,6 +445,8 @@ class PatientViewSet(viewsets.ModelViewSet):
             "id", "first_name", "last_name", "status", "created_at",
             "receptionist_id", "nurse_id", "doctor_id"
         ).distinct()
+        for backend in (DjangoFilterBackend(), filters.SearchFilter()):
+            queryset = backend.filter_queryset(self.request, queryset, self)
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
@@ -439,6 +462,8 @@ class PatientViewSet(viewsets.ModelViewSet):
             status__in=statuses,
             created_at__date=today
         )
+        for backend in (DjangoFilterBackend(), filters.SearchFilter()):
+            queryset = backend.filter_queryset(self.request, queryset, self)
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
@@ -457,6 +482,8 @@ class PatientViewSet(viewsets.ModelViewSet):
             status__in=statuses,
             created_at__date__range=[start_week, end_week]
         )
+        for backend in (DjangoFilterBackend(), filters.SearchFilter()):
+            queryset = backend.filter_queryset(self.request, queryset, self)
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
@@ -474,6 +501,8 @@ class PatientViewSet(viewsets.ModelViewSet):
             created_at__year=today.year,
             created_at__month=today.month
         )
+        for backend in (DjangoFilterBackend(), filters.SearchFilter()):
+            queryset = backend.filter_queryset(self.request, queryset, self)
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
@@ -492,6 +521,8 @@ class PatientViewSet(viewsets.ModelViewSet):
             "id", "first_name", "last_name", "status", "created_at",
             "receptionist_id", "nurse_id", "doctor_id"
         ).distinct()
+        for backend in (DjangoFilterBackend(), filters.SearchFilter()):
+            queryset = backend.filter_queryset(self.request, queryset, self)
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
@@ -509,6 +540,8 @@ class PatientViewSet(viewsets.ModelViewSet):
             "id", "first_name", "last_name", "status", "created_at",
             "receptionist_id", "nurse_id", "doctor_id"
         ).distinct()
+        for backend in (DjangoFilterBackend(), filters.SearchFilter()):
+            queryset = backend.filter_queryset(self.request, queryset, self)
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
@@ -526,12 +559,155 @@ class PatientViewSet(viewsets.ModelViewSet):
             "id", "first_name", "last_name", "status", "created_at",
             "receptionist_id", "nurse_id", "doctor_id"
         ).distinct()
+        for backend in (DjangoFilterBackend(), filters.SearchFilter()):
+            queryset = backend.filter_queryset(self.request, queryset, self)
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
             return self.get_paginated_response(serializer.data)
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def lab_waiting(self, request):
+        """
+        Patients waiting for lab: 'lab requested', 'lab and injection requested'
+        """
+        statuses = ["lab requested", "lab and injection requested"]
+        queryset = self.get_queryset().filter(status__in=statuses).only(
+            "id", "first_name", "last_name", "status", "created_at",
+            "receptionist_id", "nurse_id", "doctor_id"
+        ).distinct()
+        for backend in (DjangoFilterBackend(), filters.SearchFilter()):
+            queryset = backend.filter_queryset(self.request, queryset, self)
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        return Response(self.get_serializer(queryset, many=True).data)
+
+    @action(detail=False, methods=['get'])
+    def injection_waiting(self, request):
+        """
+        Patients waiting for injection: 'injection requested', 'lab and injection requested'
+        """
+        statuses = ["injection requested", "lab and injection requested"]
+        queryset = self.get_queryset().filter(status__in=statuses).only(
+            "id", "first_name", "last_name", "status", "created_at",
+            "receptionist_id", "nurse_id", "doctor_id"
+        ).distinct()
+        for backend in (DjangoFilterBackend(), filters.SearchFilter()):
+            queryset = backend.filter_queryset(self.request, queryset, self)
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        return Response(self.get_serializer(queryset, many=True).data)
+
+    @action(detail=False, methods=['get'])
+    def lab_patient_list(self, request):
+        """
+        Patients in lab patient list: 'lab requested', 'lab and injection requested completed'
+        """
+        statuses = ["lab requested", "lab and injection requested" ,"completed"]
+        queryset = self.get_queryset().filter(status__in=statuses).only(
+            "id", "first_name", "last_name", "status", "created_at",
+            "receptionist_id", "nurse_id", "doctor_id"
+        ).distinct()
+
+        # Apply search & filters manually for custom action
+        for backend in (DjangoFilterBackend(), filters.SearchFilter()):
+            queryset = backend.filter_queryset(self.request, queryset, self)
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        return Response(self.get_serializer(queryset, many=True).data)
+
+    # ------------------ DOCTOR PATIENT LISTS ------------------
+
+    @action(detail=False, methods=['get'])
+    def doctor_all(self, request):
+        """
+        All doctor patients: all statuses except 'registered'
+        """
+        queryset = self.get_queryset().exclude(status="registered").only(
+            "id", "first_name", "last_name", "status", "created_at",
+            "receptionist_id", "nurse_id", "doctor_id"
+        )
+        for backend in (DjangoFilterBackend(), filters.SearchFilter()):
+            queryset = backend.filter_queryset(self.request, queryset, self)
+        page = self.paginate_queryset(queryset)
+        
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        return Response(self.get_serializer(queryset, many=True).data)
+
+    @action(detail=False, methods=['get'])
+    def doctor_today(self, request):
+        """
+        Doctor patients today: exclude 'registered', filter created today
+        """
+        today = timezone.now().date()
+        queryset = self.get_queryset().exclude(status="registered").filter(
+            created_at__date=today
+        ).only(
+            "id", "first_name", "last_name", "status", "created_at",
+            "receptionist_id", "nurse_id", "doctor_id"
+        )
+        for backend in (DjangoFilterBackend(), filters.SearchFilter()):
+            queryset = backend.filter_queryset(self.request, queryset, self)
+        
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        return Response(self.get_serializer(queryset, many=True).data)
+
+    @action(detail=False, methods=['get'])
+    def doctor_weekly(self, request):
+        """
+        Doctor patients this week: exclude 'registered', filter by current week
+        """
+        today = timezone.now().date()
+        start_week = today - timedelta(days=today.weekday())
+        end_week = start_week + timedelta(days=6)
+        queryset = self.get_queryset().exclude(status="registered").filter(
+            created_at__date__range=[start_week, end_week]
+        ).only(
+            "id", "first_name", "last_name", "status", "created_at",
+            "receptionist_id", "nurse_id", "doctor_id"
+        )
+        for backend in (DjangoFilterBackend(), filters.SearchFilter()):
+            queryset = backend.filter_queryset(self.request, queryset, self)
+        
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        return Response(self.get_serializer(queryset, many=True).data)
+
+    @action(detail=False, methods=['get'])
+    def doctor_monthly(self, request):
+        """
+        Doctor patients this month: exclude 'registered', filter by current month
+        """
+        today = timezone.now().date()
+        queryset = self.get_queryset().exclude(status="registered").filter(
+            created_at__year=today.year,
+            created_at__month=today.month
+        ).only(
+            "id", "first_name", "last_name", "status", "created_at",
+            "receptionist_id", "nurse_id", "doctor_id"
+        )
+        for backend in (DjangoFilterBackend(), filters.SearchFilter()):
+            queryset = backend.filter_queryset(self.request, queryset, self)
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        return Response(self.get_serializer(queryset, many=True).data)
     
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -2651,6 +2827,9 @@ from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from .models import InjectionRoom, DoctorDetails, Employee
 from .serializers import InjectionRoomSerializer
+from django.db.models import Sum, Count
+from django.utils.timezone import now
+import calendar
 
 class InjectionRoomViewSet(viewsets.ModelViewSet):
     queryset = InjectionRoom.objects.all()
@@ -2743,22 +2922,188 @@ class PaymentViewSet(viewsets.ModelViewSet):
 
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['patient', 'receptionist']
-    search_fields = ['patient__first_name', 'patient__last_name', 'receptionist__first_name']
-    ordering_fields = ['id', 'amount']  
+    search_fields = [
+        'patient__first_name',
+        'patient__last_name',
+        'patient__phone_number',
+        'receptionist__first_name',
+        'receptionist__last_name'
+    ]
+    ordering_fields = ['id', 'payment_amount', 'created_at']
     ordering = ['-id']
 
-
-
     def get_queryset(self):
-        queryset = super().get_queryset()
-        patient_id = self.request.query_params.get('patient')
-        if patient_id:
-            queryset = queryset.filter(patient_id=patient_id)
-        receptionist_id = self.request.query_params.get('receptionist')
-        if receptionist_id:
-            queryset = queryset.filter(receptionist_id=receptionist_id)
-        queryset = queryset.select_related('patient', 'receptionist')
+        return super().get_queryset().select_related('patient', 'receptionist')
+
+    def filter_custom_queryset(self, queryset):
+        for backend in list(self.filter_backends):
+            queryset = backend().filter_queryset(self.request, queryset, self)
         return queryset
+
+    # ------------------ REPORT ENDPOINTS WITH PAGINATION ------------------
+
+    @action(detail=False, methods=['get'])
+    def all_payments(self, request):
+        queryset = self.filter_custom_queryset(self.get_queryset())
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            data = serializer.data
+        else:
+            serializer = self.get_serializer(queryset, many=True)
+            data = serializer.data
+
+        totals = queryset.aggregate(total_amount=Sum("payment_amount"), total_count=Count("id"))
+        per_patient = queryset.values("patient__id", "patient__first_name", "patient__last_name") \
+                              .annotate(patient_total=Sum("payment_amount"), payment_count=Count("id"))
+
+        return self.get_paginated_response({
+            "totals": totals,
+            "per_patient": list(per_patient),
+            "data": data
+        }) if page is not None else Response({
+            "totals": totals,
+            "per_patient": list(per_patient),
+            "data": data
+        })
+
+    @action(detail=False, methods=['get'])
+    def today_payment(self, request):
+        today = now().date()
+        queryset = self.filter_custom_queryset(
+            self.get_queryset().filter(created_at__date=today)
+        )
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            data = serializer.data
+        else:
+            serializer = self.get_serializer(queryset, many=True)
+            data = serializer.data
+
+        totals = queryset.aggregate(total_amount=Sum("payment_amount"), total_count=Count("id"))
+        per_patient = queryset.values("patient__id", "patient__first_name", "patient__last_name") \
+                              .annotate(patient_total=Sum("payment_amount"), payment_count=Count("id"))
+
+        return self.get_paginated_response({
+            "date": str(today),
+            "totals": totals,
+            "per_patient": list(per_patient),
+            "data": data
+        }) if page is not None else Response({
+            "date": str(today),
+            "totals": totals,
+            "per_patient": list(per_patient),
+            "data": data
+        })
+
+    @action(detail=False, methods=['get'])
+    def weekly_payment(self, request):
+        today = now().date()
+        start_week = today - timedelta(days=today.weekday())  # Monday
+        end_week = start_week + timedelta(days=6)  # Sunday
+
+        queryset = self.get_queryset().filter(created_at__date__range=[start_week, end_week])
+
+        # Filter by weekday if requested
+        weekday = request.query_params.get("day")  # e.g. Monday, Tuesday
+        if weekday:
+            weekday_map = {
+                "sunday": 1, "monday": 2, "tuesday": 3,
+                "wednesday": 4, "thursday": 5, "friday": 6, "saturday": 7
+            }
+            day_num = weekday_map.get(weekday.lower())
+            if day_num:
+                queryset = queryset.filter(created_at__week_day=day_num)
+
+        queryset = self.filter_custom_queryset(queryset)
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            data = serializer.data
+        else:
+            serializer = self.get_serializer(queryset, many=True)
+            data = serializer.data
+
+        breakdown = queryset.values("created_at__week_day") \
+                            .annotate(total_amount=Sum("payment_amount"), total_count=Count("id"))
+        day_map = {1: "Sunday", 2: "Monday", 3: "Tuesday", 4: "Wednesday",
+                   5: "Thursday", 6: "Friday", 7: "Saturday"}
+        breakdown_list = [
+            {"day": day_map[item["created_at__week_day"]],
+             "total_amount": item["total_amount"] or 0,
+             "total_count": item["total_count"]}
+            for item in breakdown
+        ]
+
+        per_patient = queryset.values("patient__id", "patient__first_name", "patient__last_name") \
+                              .annotate(patient_total=Sum("payment_amount"), payment_count=Count("id"))
+
+        return self.get_paginated_response({
+            "week_start": str(start_week),
+            "week_end": str(end_week),
+            "breakdown": breakdown_list,
+            "per_patient": list(per_patient),
+            "data": data
+        }) if page is not None else Response({
+            "week_start": str(start_week),
+            "week_end": str(end_week),
+            "breakdown": breakdown_list,
+            "per_patient": list(per_patient),
+            "data": data
+        })
+
+    @action(detail=False, methods=['get'])
+    def monthly_payment(self, request):
+        year = now().year
+        queryset = self.get_queryset().filter(created_at__year=year)
+
+        month = request.query_params.get("month")  # e.g. September, 9
+        if month:
+            try:
+                if month.isdigit():
+                    month_num = int(month)
+                else:
+                    month_num = list(calendar.month_name).index(month.capitalize())
+                queryset = queryset.filter(created_at__month=month_num)
+            except Exception:
+                pass
+
+        queryset = self.filter_custom_queryset(queryset)
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            data = serializer.data
+        else:
+            serializer = self.get_serializer(queryset, many=True)
+            data = serializer.data
+
+        breakdown = queryset.values("created_at__month") \
+                            .annotate(total_amount=Sum("payment_amount"), total_count=Count("id"))
+        results = [
+            {"month": calendar.month_name[item["created_at__month"]],
+             "total_amount": item["total_amount"] or 0,
+             "total_count": item["total_count"]}
+            for item in breakdown
+        ]
+
+        per_patient = queryset.values("patient__id", "patient__first_name", "patient__last_name") \
+                              .annotate(patient_total=Sum("payment_amount"), payment_count=Count("id"))
+
+        return self.get_paginated_response({
+            "year": year,
+            "breakdown": results,
+            "per_patient": list(per_patient),
+            "data": data
+        }) if page is not None else Response({
+            "year": year,
+            "breakdown": results,
+            "per_patient": list(per_patient),
+            "data": data
+        })
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
