@@ -305,12 +305,9 @@ class PatientViewSet(viewsets.ModelViewSet):
     
     @action(detail=False, methods=['get'])
     def lab_payment(self, request):
-        """
-        Patients for lab with referral_type 'lab only' or 'both' and seen by doctor
-        """
         queryset = self.get_queryset().filter(
             Q(status="seen by doctor") &
-            Q(doctor_details__referral_type__in=["lab only", "both"])
+            (Q(doctor_details__referral_type="lab_only") | Q(doctor_details__referral_type="both"))
         ).distinct()
          # distinct in case multiple doctor_details
         for backend in (DjangoFilterBackend(), filters.SearchFilter()):
@@ -324,13 +321,9 @@ class PatientViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'])
     def injection_payment(self, request):
-        """
-        Patients for injection with referral_type 'injection only' or 'both' 
-        and lab requested / injection pending (seen by doctor)
-        """
         queryset = self.get_queryset().filter(
             Q(status__in=["lab requested", "injection pending"]) &
-            Q(doctor_details__referral_type__in=["injection only", "both"])
+            (Q(doctor_details__referral_type="injection_only") | Q(doctor_details__referral_type="both"))
         ).distinct()
         for backend in (DjangoFilterBackend(), filters.SearchFilter()):
             queryset = backend.filter_queryset(self.request, queryset, self)
