@@ -305,12 +305,9 @@ class PatientViewSet(viewsets.ModelViewSet):
     
     @action(detail=False, methods=['get'])
     def lab_payment(self, request):
-        """
-        Patients for lab with referral_type 'lab only' or 'both' and seen by doctor
-        """
         queryset = self.get_queryset().filter(
             Q(status="seen by doctor") &
-            Q(doctor_details__referral_type__in=["lab only", "both"])
+            (Q(doctor_details__referral_type="lab_only") | Q(doctor_details__referral_type="both"))
         ).distinct()
          # distinct in case multiple doctor_details
         for backend in (DjangoFilterBackend(), filters.SearchFilter()):
@@ -324,13 +321,9 @@ class PatientViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'])
     def injection_payment(self, request):
-        """
-        Patients for injection with referral_type 'injection only' or 'both' 
-        and lab requested / injection pending (seen by doctor)
-        """
         queryset = self.get_queryset().filter(
             Q(status__in=["lab requested", "injection pending"]) &
-            Q(doctor_details__referral_type__in=["injection only", "both"])
+            (Q(doctor_details__referral_type="injection_only") | Q(doctor_details__referral_type="both"))
         ).distinct()
         for backend in (DjangoFilterBackend(), filters.SearchFilter()):
             queryset = backend.filter_queryset(self.request, queryset, self)
@@ -927,7 +920,8 @@ class DoctorDetailsViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        if hasattr(request.user, 'id') and isinstance(request.user, Employee):
+        # Only set doctor to logged-in user if not provided
+        if not serializer.validated_data.get('doctor') and hasattr(request.user, 'id') and isinstance(request.user, Employee):
             serializer.validated_data['doctor'] = request.user
         patient = serializer.validated_data['patient']
         patient.doctor = serializer.validated_data.get('doctor')
@@ -2811,7 +2805,7 @@ class LabResultViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         try:
-            if hasattr(request, 'user') and request.user and isinstance(request.user, Employee):
+            if not serializer.validated_data.get('uploaded_by') and hasattr(request, 'user') and request.user and isinstance(request.user, Employee):
                 serializer.validated_data['uploaded_by'] = request.user
             else:
                 if 'uploaded_by' not in serializer.validated_data:
