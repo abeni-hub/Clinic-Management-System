@@ -2154,13 +2154,27 @@ class LabResultViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
     def perform_create(self, serializer):
-        serializer.save()
+        serializer.save(uploaded_by=self.request.user if hasattr(self.request, "user") else None)
         lab_result = serializer.instance
         self._create_related_samples(lab_result)
 
     def perform_update(self, serializer):
         lab_result = serializer.save()
         self._create_related_samples(lab_result)
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response(serializer.data, status=201)
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop("partial", False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response(serializer.data)
 
     def _create_related_samples(self, lab_result):
         """Helper method to create related samples based on sub_category"""
