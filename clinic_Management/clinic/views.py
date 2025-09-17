@@ -1210,7 +1210,7 @@ class HCGSerumSampleViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         lab_result = serializer.validated_data['lab_result']
         if HCGSerumSample.objects.filter(lab_result=lab_result).exists():
-            raise serializer.ValidationError("An HCG Serum Sample already exists for this LabResult.")
+            raise ValidationError("An HCG Serum Sample already exists for this LabResult.")
         serializer.save()
 
     def perform_update(self, serializer):
@@ -1230,7 +1230,7 @@ class FBSRBSSampleViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         lab_result = serializer.validated_data['lab_result']
         if FBSRBSSample.objects.filter(lab_result=lab_result).exists():
-            raise serializer.ValidationError("An FBS/RBS Sample already exists for this LabResult.")
+            raise ValidationError("An FBS/RBS Sample already exists for this LabResult.")
         serializer.save()
 
     def perform_update(self, serializer):
@@ -1250,7 +1250,7 @@ class SGOTASTSampleViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         lab_result = serializer.validated_data['lab_result']
         if SGOTASTSample.objects.filter(lab_result=lab_result).exists():
-            raise serializer.ValidationError("An SGOT/AST Sample already exists for this LabResult.")
+            raise ValidationError("An SGOT/AST Sample already exists for this LabResult.")
         serializer.save()
 
     def perform_update(self, serializer):
@@ -1270,7 +1270,7 @@ class SGPTALTSampleViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         lab_result = serializer.validated_data['lab_result']
         if SGPTALTSample.objects.filter(lab_result=lab_result).exists():
-            raise serializer.ValidationError("An SGPT/ALT Sample already exists for this LabResult.")
+            raise ValidationError("An SGPT/ALT Sample already exists for this LabResult.")
         serializer.save()
 
     def perform_update(self, serializer):
@@ -1290,7 +1290,7 @@ class BilirubinTSampleViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         lab_result = serializer.validated_data['lab_result']
         if BilirubinTSample.objects.filter(lab_result=lab_result).exists():
-            raise serializer.ValidationError("A Bilirubin T Sample already exists for this LabResult.")
+            raise ValidationError("A Bilirubin T Sample already exists for this LabResult.")
         serializer.save()
 
     def perform_update(self, serializer):
@@ -1310,7 +1310,7 @@ class BilirubinDSampleViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         lab_result = serializer.validated_data['lab_result']
         if BilirubinDSample.objects.filter(lab_result=lab_result).exists():
-            raise serializer.ValidationError("A Bilirubin D Sample already exists for this LabResult.")
+            raise ValidationError("A Bilirubin D Sample already exists for this LabResult.")
         serializer.save()
 
     def perform_update(self, serializer):
@@ -1330,7 +1330,7 @@ class ALPSampleViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         lab_result = serializer.validated_data['lab_result']
         if ALPSample.objects.filter(lab_result=lab_result).exists():
-            raise serializer.ValidationError("An ALP Sample already exists for this LabResult.")
+            raise ValidationError("An ALP Sample already exists for this LabResult.")
         serializer.save()
 
     def perform_update(self, serializer):
@@ -1350,7 +1350,7 @@ class CreatinineSampleViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         lab_result = serializer.validated_data['lab_result']
         if CreatinineSample.objects.filter(lab_result=lab_result).exists():
-            raise serializer.ValidationError("A Creatinine Sample already exists for this LabResult.")
+            raise ValidationError("A Creatinine Sample already exists for this LabResult.")
         serializer.save()
 
     def perform_update(self, serializer):
@@ -1370,7 +1370,7 @@ class UreaSampleViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         lab_result = serializer.validated_data['lab_result']
         if UreaSample.objects.filter(lab_result=lab_result).exists():
-            raise serializer.ValidationError("A Urea Sample already exists for this LabResult.")
+            raise ValidationError("A Urea Sample already exists for this LabResult.")
         serializer.save()
 
     def perform_update(self, serializer):
@@ -1390,7 +1390,7 @@ class UricAcidSampleViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         lab_result = serializer.validated_data['lab_result']
         if UricAcidSample.objects.filter(lab_result=lab_result).exists():
-            raise serializer.ValidationError("A Uric Acid Sample already exists for this LabResult.")
+            raise ValidationError("A Uric Acid Sample already exists for this LabResult.")
         serializer.save()
 
     def perform_update(self, serializer):
@@ -1410,7 +1410,7 @@ class LipaseAmylaseSampleViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         lab_result = serializer.validated_data['lab_result']
         if LipaseAmylaseSample.objects.filter(lab_result=lab_result).exists():
-            raise serializer.ValidationError("A Lipase/Amylase Sample already exists for this LabResult.")
+            raise ValidationError("A Lipase/Amylase Sample already exists for this LabResult.")
         serializer.save()
 
     def perform_update(self, serializer):
@@ -1430,7 +1430,7 @@ class TotalCholesterolSampleViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         lab_result = serializer.validated_data['lab_result']
         if TotalCholesterolSample.objects.filter(lab_result=lab_result).exists():
-            raise serializer.ValidationError("A Total Cholesterol Sample already exists for this LabResult.")
+            raise ValidationError("A Total Cholesterol Sample already exists for this LabResult.")
         serializer.save()
 
     def perform_update(self, serializer):
@@ -1450,7 +1450,7 @@ class TriglyceridesSampleViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         lab_result = serializer.validated_data['lab_result']
         if TriglyceridesSample.objects.filter(lab_result=lab_result).exists():
-            raise serializer.ValidationError("A Triglycerides Sample already exists for this LabResult.")
+            raise ValidationError("A Triglycerides Sample already exists for this LabResult.")
         serializer.save()
 
     def perform_update(self, serializer):
@@ -1470,7 +1470,7 @@ class LDLCSampleViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         lab_result = serializer.validated_data['lab_result']
         if LDLCSample.objects.filter(lab_result=lab_result).exists():
-            raise serializer.ValidationError("An LDL-C Sample already exists for this LabResult.")
+            raise ValidationError("An LDL-C Sample already exists for this LabResult.")
         serializer.save()
 
     def perform_update(self, serializer):
@@ -1490,7 +1490,7 @@ class HDLCSampleViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         lab_result = serializer.validated_data['lab_result']
         if HDLCSample.objects.filter(lab_result=lab_result).exists():
-            raise serializer.ValidationError("An HDL-C Sample already exists for this LabResult.")
+            raise ValidationError("An HDL-C Sample already exists for this LabResult.")
         serializer.save()
 
     def perform_update(self, serializer):
@@ -1510,7 +1510,7 @@ class SodiumSampleViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         lab_result = serializer.validated_data['lab_result']
         if SodiumSample.objects.filter(lab_result=lab_result).exists():
-            raise serializer.ValidationError("A Sodium Sample already exists for this LabResult.")
+            raise ValidationError("A Sodium Sample already exists for this LabResult.")
         serializer.save()
 
     def perform_update(self, serializer):
@@ -1530,7 +1530,7 @@ class PotassiumSampleViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         lab_result = serializer.validated_data['lab_result']
         if PotassiumSample.objects.filter(lab_result=lab_result).exists():
-            raise serializer.ValidationError("A Potassium Sample already exists for this LabResult.")
+            raise ValidationError("A Potassium Sample already exists for this LabResult.")
         serializer.save()
 
     def perform_update(self, serializer):
@@ -1550,7 +1550,7 @@ class CalciumSampleViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         lab_result = serializer.validated_data['lab_result']
         if CalciumSample.objects.filter(lab_result=lab_result).exists():
-            raise serializer.ValidationError("A Calcium Sample already exists for this LabResult.")
+            raise ValidationError("A Calcium Sample already exists for this LabResult.")
         serializer.save()
 
     def perform_update(self, serializer):
@@ -1570,7 +1570,7 @@ class WidalTestHSampleViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         lab_result = serializer.validated_data['lab_result']
         if WidalTestHSample.objects.filter(lab_result=lab_result).exists():
-            raise serializer.ValidationError("A Widal Test H Sample already exists for this LabResult.")
+            raise ValidationError("A Widal Test H Sample already exists for this LabResult.")
         serializer.save()
 
     def perform_update(self, serializer):
@@ -1590,7 +1590,7 @@ class WidalTestOSampleViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         lab_result = serializer.validated_data['lab_result']
         if WidalTestOSample.objects.filter(lab_result=lab_result).exists():
-            raise serializer.ValidationError("A Widal Test O Sample already exists for this LabResult.")
+            raise ValidationError("A Widal Test O Sample already exists for this LabResult.")
         serializer.save()
 
     def perform_update(self, serializer):
@@ -1610,7 +1610,7 @@ class WeilFelixTestSampleViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         lab_result = serializer.validated_data['lab_result']
         if WeilFelixTestSample.objects.filter(lab_result=lab_result).exists():
-            raise serializer.ValidationError("A Weil Felix Test Sample already exists for this LabResult.")
+            raise ValidationError("A Weil Felix Test Sample already exists for this LabResult.")
         serializer.save()
 
     def perform_update(self, serializer):
@@ -1630,7 +1630,7 @@ class VDRLRPRTestSampleViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         lab_result = serializer.validated_data['lab_result']
         if VDRLRPRTestSample.objects.filter(lab_result=lab_result).exists():
-            raise serializer.ValidationError("A VDRL/RPR Test Sample already exists for this LabResult.")
+            raise ValidationError("A VDRL/RPR Test Sample already exists for this LabResult.")
         serializer.save()
 
     def perform_update(self, serializer):
@@ -1650,7 +1650,7 @@ class TPHATestSampleViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         lab_result = serializer.validated_data['lab_result']
         if TPHATestSample.objects.filter(lab_result=lab_result).exists():
-            raise serializer.ValidationError("A TPHA Test Sample already exists for this LabResult.")
+            raise ValidationError("A TPHA Test Sample already exists for this LabResult.")
         serializer.save()
 
     def perform_update(self, serializer):
@@ -1670,7 +1670,7 @@ class HPyloriAntibodySampleViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         lab_result = serializer.validated_data['lab_result']
         if HPyloriAntibodySample.objects.filter(lab_result=lab_result).exists():
-            raise serializer.ValidationError("An H. Pylori Antibody Sample already exists for this LabResult.")
+            raise ValidationError("An H. Pylori Antibody Sample already exists for this LabResult.")
         serializer.save()
 
     def perform_update(self, serializer):
@@ -1690,11 +1690,16 @@ class HPyloriStoolAntigenSampleViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         lab_result = serializer.validated_data['lab_result']
         if HPyloriStoolAntigenSample.objects.filter(lab_result=lab_result).exists():
-            raise serializer.ValidationError("An H. Pylori Stool Antigen Sample already exists for this LabResult.")
+            raise ValidationError("An H. Pylori Stool Antigen Sample already exists for this LabResult.")
         serializer.save()
 
     def perform_update(self, serializer):
         serializer.save()
+
+
+
+from rest_framework.exceptions import ValidationError
+
 
 class HBsAgTestSampleViewSet(viewsets.ModelViewSet):
     queryset = HBsAgTestSample.objects.all()
@@ -1710,7 +1715,7 @@ class HBsAgTestSampleViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         lab_result = serializer.validated_data['lab_result']
         if HBsAgTestSample.objects.filter(lab_result=lab_result).exists():
-            raise serializer.ValidationError("An HBsAg Test Sample already exists for this LabResult.")
+            raise ValidationError("An HBsAg Test Sample already exists for this LabResult.")
         serializer.save()
 
     def perform_update(self, serializer):
@@ -1730,7 +1735,7 @@ class HCVAgTestSampleViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         lab_result = serializer.validated_data['lab_result']
         if HCVAgTestSample.objects.filter(lab_result=lab_result).exists():
-            raise serializer.ValidationError("An HCV Ag Test Sample already exists for this LabResult.")
+            raise ValidationError("An HCV Ag Test Sample already exists for this LabResult.")
         serializer.save()
 
     def perform_update(self, serializer):
