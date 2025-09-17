@@ -322,7 +322,7 @@ class PatientViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def injection_payment(self, request):
         queryset = self.get_queryset().filter(
-            Q(status__in=["lab requested", "injection pending"]) &
+            Q(status__in=["lab requested injection pending", "seen by doctor"]) &
             (Q(doctor_details__referral_type="injection_only") | Q(doctor_details__referral_type="both"))
         ).distinct()
         for backend in (DjangoFilterBackend(), filters.SearchFilter()):
@@ -338,7 +338,7 @@ class PatientViewSet(viewsets.ModelViewSet):
         """
         Patients with status 'injection requested' or 'lab and injection requested'
         """
-        statuses = ["injection requested", "lab and injection requested"]
+        statuses = ["injection requested", "lab and injection requested" , "lab reviewed injection pending"]
         queryset = self.get_queryset().filter(status__in=statuses).only(
             "id", "first_name", "last_name", "status", "created_at",
             "receptionist_id", "nurse_id", "doctor_id"
@@ -357,7 +357,7 @@ class PatientViewSet(viewsets.ModelViewSet):
         """
         Patients with status 'injection requested', 'lab and injection requested', 'completed'
         """
-        statuses = ["injection requested", "lab and injection requested", "completed"]
+        statuses = ["injection requested", "lab and injection requested", "completed","lab and injection reviewed"]
         queryset = self.get_queryset().filter(status__in=statuses).only(
             "id", "first_name", "last_name", "status", "created_at",
             "receptionist_id", "nurse_id", "doctor_id"
@@ -374,7 +374,7 @@ class PatientViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def injection_today(self, request):
         today = timezone.now().date()
-        statuses = ["injection requested", "lab and injection requested", "completed"]
+        statuses = ["injection requested", "lab and injection requested", "completed","lab and injection reviewed"]
         queryset = self.get_queryset().filter(
             status__in=statuses,
             created_at__date=today
@@ -394,7 +394,7 @@ class PatientViewSet(viewsets.ModelViewSet):
         today = timezone.now().date()
         start_week = today - timedelta(days=today.weekday())
         end_week = start_week + timedelta(days=6)
-        statuses = ["injection requested", "lab and injection requested", "completed"]
+        statuses = ["injection requested", "lab and injection requested", "completed","lab and injection reviewed"]
         queryset = self.get_queryset().filter(
             status__in=statuses,
             created_at__date__range=[start_week, end_week]
@@ -411,7 +411,7 @@ class PatientViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def injection_monthly(self, request):
         today = timezone.now().date()
-        statuses = ["injection requested", "lab and injection requested", "completed"]
+        statuses = ["injection requested", "lab and injection requested", "completed", "lab and injection reviewed"]
         queryset = self.get_queryset().filter(
             status__in=statuses,
             created_at__year=today.year,
@@ -450,7 +450,7 @@ class PatientViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def lab_today(self, request):
         today = timezone.now().date()
-        statuses = ["lab requested", "lab and injection requested"]
+        statuses = ["lab requested", "lab and injection requested","lab reviewed", "completed" , "lab reviewed injection pending","lab and injection reviewed"]
         queryset = self.get_queryset().filter(
             status__in=statuses,
             created_at__date=today
@@ -470,7 +470,7 @@ class PatientViewSet(viewsets.ModelViewSet):
         today = timezone.now().date()
         start_week = today - timedelta(days=today.weekday())
         end_week = start_week + timedelta(days=6)
-        statuses = ["lab requested", "lab and injection requested"]
+        statuses = ["lab requested", "lab and injection requested","lab reviewed", "completed","lab reviewed injection pending", "lab and injection reviewed"]
         queryset = self.get_queryset().filter(
             status__in=statuses,
             created_at__date__range=[start_week, end_week]
@@ -488,7 +488,7 @@ class PatientViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def lab_monthly(self, request):
         today = timezone.now().date()
-        statuses = ["lab requested", "lab and injection requested"]
+        statuses = ["lab requested", "lab and injection requested","lab reviewed" ,"completed","lab reviewed injection pending", "lab and injection reviewed"]
         queryset = self.get_queryset().filter(
             status__in=statuses,
             created_at__year=today.year,
@@ -602,7 +602,7 @@ class PatientViewSet(viewsets.ModelViewSet):
         """
         Patients in lab patient list: 'lab requested', 'lab and injection requested completed'
         """
-        statuses = ["lab requested", "lab and injection requested" ,"completed"]
+        statuses = ["lab requested", "lab and injection requested" ,"completed" ,"lab reviewed", "lab reviewed injection pending",  "lab and injection reviewed"] 
         queryset = self.get_queryset().filter(status__in=statuses).only(
             "id", "first_name", "last_name", "status", "created_at",
             "receptionist_id", "nurse_id", "doctor_id"
@@ -1058,6 +1058,7 @@ class BloodGroupSampleViewSet(viewsets.ModelViewSet):
 class StoneExamSampleViewSet(viewsets.ModelViewSet):
     queryset = StoneExamSample.objects.all()
     serializer_class = StoneExamSampleSerializer
+    
 
     def get_queryset(self):
         queryset = super().get_queryset()
@@ -2059,6 +2060,7 @@ class BFSampleViewSet(viewsets.ModelViewSet):
 class LabResultViewSet(viewsets.ModelViewSet):
     queryset = LabResult.objects.all()
     serializer_class = LabResultSerializer
+    
 
     def get_queryset(self):
         queryset = super().get_queryset()
@@ -2154,27 +2156,13 @@ class LabResultViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
     def perform_create(self, serializer):
-        serializer.save(uploaded_by=self.request.user if hasattr(self.request, "user") else None)
+        serializer.save()
         lab_result = serializer.instance
         self._create_related_samples(lab_result)
 
     def perform_update(self, serializer):
         lab_result = serializer.save()
         self._create_related_samples(lab_result)
-
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-        return Response(serializer.data, status=201)
-
-    def update(self, request, *args, **kwargs):
-        partial = kwargs.pop("partial", False)
-        instance = self.get_object()
-        serializer = self.get_serializer(instance, data=request.data, partial=partial)
-        serializer.is_valid(raise_exception=True)
-        self.perform_update(serializer)
-        return Response(serializer.data)
 
     def _create_related_samples(self, lab_result):
         """Helper method to create related samples based on sub_category"""
@@ -2818,18 +2806,19 @@ class LabResultViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        try:
-            if not serializer.validated_data.get('uploaded_by') and hasattr(request, 'user') and request.user and isinstance(request.user, Employee):
+        
+        # Handle uploaded_by
+        if 'uploaded_by' not in serializer.validated_data or not serializer.validated_data['uploaded_by']:
+            if hasattr(request, 'user') and request.user and isinstance(request.user, Employee):
                 serializer.validated_data['uploaded_by'] = request.user
             else:
-                if 'uploaded_by' not in serializer.validated_data:
-                    return Response({"error": "uploaded_by is required if user is not authenticated"}, status=status.HTTP_400_BAD_REQUEST)
-        except AttributeError:
-            return Response({"error": "Invalid request object"}, status=status.HTTP_400_BAD_REQUEST)
-        doctor_details_id = serializer.validated_data['doctor_details']
-        doctor_details = get_object_or_404(DoctorDetails, id=doctor_details_id.id)
+                return Response({"error": "uploaded_by is required"}, status=status.HTTP_400_BAD_REQUEST)
+        
         self.perform_create(serializer)
-        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=self.get_success_headers(serializer.data))
+        headers = self.get_success_headers(serializer)
+        # Return full serialized instance including newly created related samples
+        return Response(self.get_serializer(serializer.instance).data, status=status.HTTP_201_CREATED, headers=headers)
+    
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
@@ -2837,8 +2826,8 @@ from .models import InjectionRoom, DoctorDetails, Employee
 from .serializers import InjectionRoomSerializer
 from django.db.models import Sum, Count
 from django.utils.timezone import now
+from django.db.models.functions import ExtractWeekDay
 import calendar
-from django.db.models.functions import TruncDate
 
 
 class InjectionRoomViewSet(viewsets.ModelViewSet):
@@ -2929,6 +2918,8 @@ class AppointmentViewSet(viewsets.ModelViewSet):
 class PaymentViewSet(viewsets.ModelViewSet):
     queryset = Payment.objects.all()
     serializer_class = PaymentSerializer
+    
+    
 
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['patient', 'receptionist']
@@ -2936,7 +2927,7 @@ class PaymentViewSet(viewsets.ModelViewSet):
         'patient__first_name',
         'patient__last_name',
         'patient__phone_number',
-        'receptionist_name',
+        'receptionist__id', 
     ]
     ordering_fields = ['id', 'payment_amount', 'created_at']
     ordering = ['-id']
@@ -2978,7 +2969,7 @@ class PaymentViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'])
     def today_payment(self, request):
-        today = now().date()
+        today = timezone.now().date()
         queryset = self.filter_custom_queryset(
             self.get_queryset().filter(created_at__date=today)
         )
@@ -2986,132 +2977,92 @@ class PaymentViewSet(viewsets.ModelViewSet):
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
-            data = serializer.data
+            paginated_data = serializer.data
         else:
             serializer = self.get_serializer(queryset, many=True)
-            data = serializer.data
+            paginated_data = serializer.data
 
         totals = queryset.aggregate(total_amount=Sum("payment_amount"), total_count=Count("id"))
         per_patient = queryset.values("patient__id", "patient__first_name", "patient__last_name") \
                               .annotate(patient_total=Sum("payment_amount"), payment_count=Count("id"))
 
-        return self.get_paginated_response({
+        response_data = {
             "date": str(today),
             "totals": totals,
             "per_patient": list(per_patient),
-            "data": data
-        }) if page is not None else Response({
-            "date": str(today),
-            "totals": totals,
-            "per_patient": list(per_patient),
-            "data": data
-        })
-
-    def filter_custom_queryset(self, queryset):
-        # Add your custom filters here (lab, injection, etc.)
-        return queryset
+            "results": paginated_data
+        }
+        
+        if page is not None:
+            response = self.get_paginated_response(paginated_data)
+            response.data.update(response_data)
+            return response
+        else:
+            return Response(response_data)
 
     @action(detail=False, methods=['get'])
     def weekly_payment(self, request):
-        today = now().date()
+        today = timezone.now().date()
         start_week = today - timedelta(days=today.weekday())  # Monday
         end_week = start_week + timedelta(days=6)  # Sunday
 
         queryset = self.get_queryset().filter(created_at__date__range=[start_week, end_week])
+
+        # Filter by weekday if requested (filter to specific date in the week)
+        weekday = request.query_params.get("day")  # e.g. Monday, Tuesday
+        if weekday:
+            weekday_map = {
+                "monday": 0, "tuesday": 1, "wednesday": 2,
+                "thursday": 3, "friday": 4, "saturday": 5, "sunday": 6
+            }
+            day_offset = weekday_map.get(weekday.lower())
+            if day_offset is not None:
+                specific_date = start_week + timedelta(days=day_offset)
+                queryset = queryset.filter(created_at__date=specific_date)
+
         queryset = self.filter_custom_queryset(queryset)
 
-        # Optional query param
-        filter_day = request.query_params.get("day", None)  # e.g. "Monday"
-
-        # Annotate by day
-        annotated = queryset.annotate(day=TruncDate("created_at"))
-
-        if filter_day:
-            filter_day = filter_day.capitalize()
-            annotated = [p for p in annotated if p.day.strftime("%A") == filter_day]
-
-            if not annotated:
-                return Response({
-                    "message": f"No payments found for {filter_day} in this week",
-                    "week_start": str(start_week),
-                    "week_end": str(end_week),
-                    "data": []
-                })
-
-            day_date = annotated[0].day
-            queryset = queryset.filter(created_at__date=day_date)
-
-            daily_totals = queryset.aggregate(
-                total_amount=Sum("payment_amount"),
-                total_count=Count("id")
-            )
-
-            per_patient = queryset.values(
-                "patient__id", "patient__first_name", "patient__last_name"
-            ).annotate(
-                patient_total=Sum("payment_amount"),
-                payment_count=Count("id")
-            )
-
-            serializer = self.get_serializer(queryset, many=True)
-            return Response({
-                "week_start": str(start_week),
-                "week_end": str(end_week),
-                "selected_day": filter_day,
-                "date": str(day_date),
-                "daily_totals": daily_totals,
-                "per_patient": list(per_patient),
-                "data": serializer.data
-            })
-
-        # ---- Full weekly report ----
-        breakdown = (
-            annotated.values("day")
-                     .annotate(
-                         total_amount=Sum("payment_amount"),
-                         total_count=Count("id")
-                     )
-                     .order_by("day")
-        )
-
-        breakdown_list = []
-        for item in breakdown:
-            day_name = item["day"].strftime("%A")
-            breakdown_list.append({
-                "day": day_name,
-                "date": str(item["day"]),
-                "total_amount": item["total_amount"] or 0,
-                "total_count": item["total_count"]
-            })
-
-        weekly_totals = queryset.aggregate(
-            total_amount=Sum("payment_amount"),
-            total_count=Count("id")
-        )
-
-        per_patient = queryset.values(
-            "patient__id", "patient__first_name", "patient__last_name"
-        ).annotate(
-            patient_total=Sum("payment_amount"),
-            payment_count=Count("id")
-        )
-
         page = self.paginate_queryset(queryset)
-        serializer = self.get_serializer(page, many=True) if page else self.get_serializer(queryset, many=True)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            paginated_data = serializer.data
+        else:
+            serializer = self.get_serializer(queryset, many=True)
+            paginated_data = serializer.data
+
+        # Use ExtractWeekDay for breakdown
+        breakdown = queryset.annotate(weekday=ExtractWeekDay('created_at')).values("weekday") \
+                            .annotate(total_amount=Sum("payment_amount"), total_count=Count("id"))
+        # day_map for ExtractWeekDay: 1=Sunday, 2=Monday, ..., 7=Saturday
+        day_map = {1: "Sunday", 2: "Monday", 3: "Tuesday", 4: "Wednesday",
+                   5: "Thursday", 6: "Friday", 7: "Saturday"}
+        breakdown_list = [
+            {"day": day_map.get(item["weekday"], "Unknown"),
+             "total_amount": item["total_amount"] or 0,
+             "total_count": item["total_count"]}
+            for item in breakdown
+        ]
+
+        per_patient = queryset.values("patient__id", "patient__first_name", "patient__last_name") \
+                              .annotate(patient_total=Sum("payment_amount"), payment_count=Count("id"))
 
         response_data = {
             "week_start": str(start_week),
             "week_end": str(end_week),
-            "weekly_totals": weekly_totals,
-            "daily_breakdown": breakdown_list,
+            "breakdown": breakdown_list,
             "per_patient": list(per_patient),
-            "data": serializer.data,
+            "results": paginated_data
         }
-        return self.get_paginated_response(response_data) if page else Response(response_data)
-
+        
+        if page is not None:
+            response = self.get_paginated_response(paginated_data)
+            response.data.update(response_data)
+            return response
+        else:
+            return Response(response_data)
     @action(detail=False, methods=['get'])
     def monthly_payment(self, request):
-        year = now().year
+        year = timezone.now().year
         queryset = self.get_queryset().filter(created_at__year=year)
 
         month = request.query_params.get("month")  # e.g. September, 9
@@ -3121,8 +3072,9 @@ class PaymentViewSet(viewsets.ModelViewSet):
                     month_num = int(month)
                 else:
                     month_num = list(calendar.month_name).index(month.capitalize())
-                queryset = queryset.filter(created_at__month=month_num)
-            except Exception:
+                if 1 <= month_num <= 12:
+                    queryset = queryset.filter(created_at__month=month_num)
+            except (ValueError, IndexError):
                 pass
 
         queryset = self.filter_custom_queryset(queryset)
@@ -3130,10 +3082,10 @@ class PaymentViewSet(viewsets.ModelViewSet):
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
-            data = serializer.data
+            paginated_data = serializer.data
         else:
             serializer = self.get_serializer(queryset, many=True)
-            data = serializer.data
+            paginated_data = serializer.data
 
         breakdown = queryset.values("created_at__month") \
                             .annotate(total_amount=Sum("payment_amount"), total_count=Count("id"))
@@ -3147,51 +3099,45 @@ class PaymentViewSet(viewsets.ModelViewSet):
         per_patient = queryset.values("patient__id", "patient__first_name", "patient__last_name") \
                               .annotate(patient_total=Sum("payment_amount"), payment_count=Count("id"))
 
-        return self.get_paginated_response({
+        response_data = {
             "year": year,
             "breakdown": results,
             "per_patient": list(per_patient),
-            "data": data
-        }) if page is not None else Response({
-            "year": year,
-            "breakdown": results,
-            "per_patient": list(per_patient),
-            "data": data
-        })
+            "results": paginated_data
+        }
+        
+        if page is not None:
+            response = self.get_paginated_response(paginated_data)
+            response.data.update(response_data)
+            return response
+        else:
+            return Response(response_data)
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-
-        # Assign receptionist automatically if authenticated Employee
-        receptionist = None
-        if hasattr(request, "user") and isinstance(request.user, Employee):
-            receptionist = request.user
-        elif "receptionist" in serializer.validated_data:
-            receptionist = serializer.validated_data["receptionist"]
-
-        if not receptionist:
-            return Response({"error": "Receptionist is required"}, status=status.HTTP_400_BAD_REQUEST)
-
-        instance = serializer.save(receptionist=receptionist)
-
-        # Refresh with related objects
-        instance = Payment.objects.select_related("patient", "receptionist").get(pk=instance.pk)
-        output_serializer = self.get_serializer(instance)
-
-        headers = self.get_success_headers(output_serializer.data)
-        return Response(output_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        
+        # Handle receptionist
+        if hasattr(request, 'user') and request.user and isinstance(request.user, Employee):
+            serializer.validated_data['receptionist'] = request.user
+        elif 'receptionist' not in serializer.validated_data:
+            return Response({"error": "receptionist is required"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer)
+        # Return full serialized instance for consistency
+        return Response(self.get_serializer(serializer.instance).data, status=status.HTTP_201_CREATED, headers=headers)
 
     def update(self, request, *args, **kwargs):
         partial = kwargs.pop('partial', False)
         instance = self.get_object()
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
-        try:
-            if hasattr(request, 'user') and request.user and isinstance(request.user, Employee):
-                serializer.validated_data['receptionist'] = request.user
-        except AttributeError:
-            pass
+        
+        # Override receptionist with current user if authenticated
+        if hasattr(request, 'user') and request.user and isinstance(request.user, Employee):
+            serializer.validated_data['receptionist'] = request.user
+        
         self.perform_update(serializer)
         return Response(serializer.data)
 
@@ -3199,7 +3145,6 @@ class PaymentViewSet(viewsets.ModelViewSet):
         instance = self.get_object()
         self.perform_destroy(instance)
         return Response(status=status.HTTP_204_NO_CONTENT)
-
 class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
@@ -3212,7 +3157,9 @@ class CategoryViewSet(viewsets.ModelViewSet):
 class SubCategoryViewSet(viewsets.ModelViewSet):
     queryset = SubCategory.objects.all()
     serializer_class = SubCategorySerializer
-
+    pagination_class = None
+    filter_backends = []
+    
     def get_queryset(self):
         queryset = super().get_queryset()
         main_category_id = self.request.query_params.get('main_category')
