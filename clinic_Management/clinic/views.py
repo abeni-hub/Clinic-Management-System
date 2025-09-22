@@ -2878,6 +2878,52 @@ class InjectionRoomViewSet(viewsets.ModelViewSet):
             )
         self.perform_create(serializer)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=self.get_success_headers(serializer.data))
+    @action(detail=False, methods=['get'])
+    def today_total(self, request):
+        today = now().date()
+        queryset = self.get_queryset().filter(created_at__date=today)
+
+        totals = queryset.aggregate(total_count=Count("id"))
+        per_nurse = queryset.values("nurse__id", "nurse__first_name").annotate(injection_count=Count("id"))
+
+        return Response({
+            "date": str(today),
+            "totals": totals,
+            "per_nurse": list(per_nurse)
+        })
+
+    @action(detail=False, methods=['get'])
+    def weekly_total(self, request):
+        today = now().date()
+        start_week = today - timedelta(days=today.weekday())  # Monday
+        end_week = start_week + timedelta(days=6)  # Sunday
+
+        queryset = self.get_queryset().filter(created_at__date__range=[start_week, end_week])
+
+        totals = queryset.aggregate(total_count=Count("id"))
+        per_day = queryset.extra({"day": "date(created_at)"}).values("day").annotate(injection_count=Count("id"))
+
+        return Response({
+            "week_start": str(start_week),
+            "week_end": str(end_week),
+            "totals": totals,
+            "daily_breakdown": list(per_day)
+        })
+
+    @action(detail=False, methods=['get'])
+    def monthly_total(self, request):
+        today = now().date()
+        queryset = self.get_queryset().filter(created_at__year=today.year, created_at__month=today.month)
+
+        totals = queryset.aggregate(total_count=Count("id"))
+        per_nurse = queryset.values("nurse__id", "nurse__first_name").annotate(injection_count=Count("id"))
+
+        return Response({
+            "year": today.year,
+            "month": today.strftime("%B"),
+            "totals": totals,
+            "per_nurse": list(per_nurse)
+        })
 
 class AppointmentViewSet(viewsets.ModelViewSet):
     queryset = Appointment.objects.all()
