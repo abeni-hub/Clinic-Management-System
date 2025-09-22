@@ -2881,7 +2881,7 @@ class InjectionRoomViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def today_total(self, request):
         today = now().date()
-        queryset = self.get_queryset().filter(created_at__date=today)
+        queryset = self.get_queryset().filter(date=today)   # use date field
 
         totals = queryset.aggregate(total_count=Count("id"))
         per_nurse = queryset.values("nurse__id", "nurse__first_name").annotate(injection_count=Count("id"))
@@ -2898,22 +2898,30 @@ class InjectionRoomViewSet(viewsets.ModelViewSet):
         start_week = today - timedelta(days=today.weekday())  # Monday
         end_week = start_week + timedelta(days=6)  # Sunday
 
-        queryset = self.get_queryset().filter(created_at__date__range=[start_week, end_week])
+        queryset = self.get_queryset().filter(date__range=[start_week, end_week])  # use date field
 
         totals = queryset.aggregate(total_count=Count("id"))
-        per_day = queryset.extra({"day": "date(created_at)"}).values("day").annotate(injection_count=Count("id"))
+        per_day = queryset.values("date").annotate(injection_count=Count("id")).order_by("date")
+
+        breakdown = []
+        for item in per_day:
+            breakdown.append({
+                "day": item["date"].strftime("%A"),
+                "date": str(item["date"]),
+                "injection_count": item["injection_count"]
+            })
 
         return Response({
             "week_start": str(start_week),
             "week_end": str(end_week),
             "totals": totals,
-            "daily_breakdown": list(per_day)
+            "daily_breakdown": breakdown
         })
 
     @action(detail=False, methods=['get'])
     def monthly_total(self, request):
         today = now().date()
-        queryset = self.get_queryset().filter(created_at__year=today.year, created_at__month=today.month)
+        queryset = self.get_queryset().filter(date__year=today.year, date__month=today.month)  # use date field
 
         totals = queryset.aggregate(total_count=Count("id"))
         per_nurse = queryset.values("nurse__id", "nurse__first_name").annotate(injection_count=Count("id"))
@@ -2924,7 +2932,7 @@ class InjectionRoomViewSet(viewsets.ModelViewSet):
             "totals": totals,
             "per_nurse": list(per_nurse)
         })
-
+    
 class AppointmentViewSet(viewsets.ModelViewSet):
     queryset = Appointment.objects.all()
     serializer_class = AppointmentSerializer
@@ -3026,12 +3034,8 @@ class PaymentViewSet(viewsets.ModelViewSet):
         )
 
         page = self.paginate_queryset(queryset)
-        if page is not None:
-            serializer = self.get_serializer(page, many=True)
-            paginated_data = serializer.data
-        else:
-            serializer = self.get_serializer(queryset, many=True)
-            paginated_data = serializer.data
+        serializer = self.get_serializer(page or queryset, many=True)
+        paginated_data = serializer.data
 
         totals = queryset.aggregate(total_amount=Sum("payment_amount"), total_count=Count("id"))
         per_patient = queryset.values("patient__id", "patient__first_name", "patient__last_name") \
@@ -3043,14 +3047,14 @@ class PaymentViewSet(viewsets.ModelViewSet):
             "per_patient": list(per_patient),
             "results": paginated_data
         }
-        
+
         if page is not None:
             response = self.get_paginated_response(paginated_data)
             response.data.update(response_data)
             return response
-        else:
-            return Response(response_data)
+        return Response(response_data)
 
+    # ------------------ WEEKLY ------------------
     @action(detail=False, methods=['get'])
     def weekly_payment(self, request):
         today = timezone.now().date()
@@ -3058,35 +3062,18 @@ class PaymentViewSet(viewsets.ModelViewSet):
         end_week = start_week + timedelta(days=6)  # Sunday
 
         queryset = self.get_queryset().filter(created_at__date__range=[start_week, end_week])
-
-        # Filter by weekday if requested (filter to specific date in the week)
-        weekday = request.query_params.get("day")  # e.g. Monday, Tuesday
-        if weekday:
-            weekday_map = {
-                "monday": 0, "tuesday": 1, "wednesday": 2,
-                "thursday": 3, "friday": 4, "saturday": 5, "sunday": 6
-            }
-            day_offset = weekday_map.get(weekday.lower())
-            if day_offset is not None:
-                specific_date = start_week + timedelta(days=day_offset)
-                queryset = queryset.filter(created_at__date=specific_date)
-
         queryset = self.filter_custom_queryset(queryset)
 
-        page = self.paginate_queryset(queryset)
-        if page is not None:
-            serializer = self.get_serializer(page, many=True)
-            paginated_data = serializer.data
-        else:
-            serializer = self.get_serializer(queryset, many=True)
-            paginated_data = serializer.data
+        # Totals for the entire week
+        totals = queryset.aggregate(total_amount=Sum("payment_amount"), total_count=Count("id"))
 
-        # Use ExtractWeekDay for breakdown
+        # Breakdown per day
         breakdown = queryset.annotate(weekday=ExtractWeekDay('created_at')).values("weekday") \
                             .annotate(total_amount=Sum("payment_amount"), total_count=Count("id"))
-        # day_map for ExtractWeekDay: 1=Sunday, 2=Monday, ..., 7=Saturday
+
         day_map = {1: "Sunday", 2: "Monday", 3: "Tuesday", 4: "Wednesday",
                    5: "Thursday", 6: "Friday", 7: "Saturday"}
+
         breakdown_list = [
             {"day": day_map.get(item["weekday"], "Unknown"),
              "total_amount": item["total_amount"] or 0,
@@ -3097,20 +3084,26 @@ class PaymentViewSet(viewsets.ModelViewSet):
         per_patient = queryset.values("patient__id", "patient__first_name", "patient__last_name") \
                               .annotate(patient_total=Sum("payment_amount"), payment_count=Count("id"))
 
+        page = self.paginate_queryset(queryset)
+        serializer = self.get_serializer(page or queryset, many=True)
+        paginated_data = serializer.data
+
         response_data = {
             "week_start": str(start_week),
             "week_end": str(end_week),
+            "totals": totals,  # ✅ weekly grand total
             "breakdown": breakdown_list,
             "per_patient": list(per_patient),
             "results": paginated_data
         }
-        
+
         if page is not None:
             response = self.get_paginated_response(paginated_data)
             response.data.update(response_data)
             return response
-        else:
-            return Response(response_data)
+        return Response(response_data)
+
+    # ------------------ MONTHLY ------------------
     @action(detail=False, methods=['get'])
     def monthly_payment(self, request):
         year = timezone.now().year
@@ -3130,16 +3123,13 @@ class PaymentViewSet(viewsets.ModelViewSet):
 
         queryset = self.filter_custom_queryset(queryset)
 
-        page = self.paginate_queryset(queryset)
-        if page is not None:
-            serializer = self.get_serializer(page, many=True)
-            paginated_data = serializer.data
-        else:
-            serializer = self.get_serializer(queryset, many=True)
-            paginated_data = serializer.data
+        # Totals for the entire year or given month
+        totals = queryset.aggregate(total_amount=Sum("payment_amount"), total_count=Count("id"))
 
+        # Breakdown per month
         breakdown = queryset.values("created_at__month") \
                             .annotate(total_amount=Sum("payment_amount"), total_count=Count("id"))
+
         results = [
             {"month": calendar.month_name[item["created_at__month"]],
              "total_amount": item["total_amount"] or 0,
@@ -3150,20 +3140,23 @@ class PaymentViewSet(viewsets.ModelViewSet):
         per_patient = queryset.values("patient__id", "patient__first_name", "patient__last_name") \
                               .annotate(patient_total=Sum("payment_amount"), payment_count=Count("id"))
 
+        page = self.paginate_queryset(queryset)
+        serializer = self.get_serializer(page or queryset, many=True)
+        paginated_data = serializer.data
+
         response_data = {
             "year": year,
+            "totals": totals,  # ✅ monthly/year grand total
             "breakdown": results,
             "per_patient": list(per_patient),
             "results": paginated_data
         }
-        
+
         if page is not None:
             response = self.get_paginated_response(paginated_data)
             response.data.update(response_data)
             return response
-        else:
-            return Response(response_data)
-
+        return Response(response_data)
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
