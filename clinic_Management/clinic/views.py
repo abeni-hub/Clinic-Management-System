@@ -3033,13 +3033,13 @@ class PaymentViewSet(viewsets.ModelViewSet):
             self.get_queryset().filter(created_at__date=today)
         )
 
-        page = self.paginate_queryset(queryset)
-        serializer = self.get_serializer(page or queryset, many=True)
-        paginated_data = serializer.data
-
         totals = queryset.aggregate(total_amount=Sum("payment_amount"), total_count=Count("id"))
         per_patient = queryset.values("patient__id", "patient__first_name", "patient__last_name") \
                               .annotate(patient_total=Sum("payment_amount"), payment_count=Count("id"))
+
+        page = self.paginate_queryset(queryset)
+        serializer = self.get_serializer(page or queryset, many=True)
+        paginated_data = serializer.data
 
         response_data = {
             "date": str(today),
@@ -3064,7 +3064,7 @@ class PaymentViewSet(viewsets.ModelViewSet):
         queryset = self.get_queryset().filter(created_at__date__range=[start_week, end_week])
         queryset = self.filter_custom_queryset(queryset)
 
-        # Totals for the entire week
+        # Weekly grand total
         totals = queryset.aggregate(total_amount=Sum("payment_amount"), total_count=Count("id"))
 
         # Breakdown per day
@@ -3074,7 +3074,7 @@ class PaymentViewSet(viewsets.ModelViewSet):
         day_map = {1: "Sunday", 2: "Monday", 3: "Tuesday", 4: "Wednesday",
                    5: "Thursday", 6: "Friday", 7: "Saturday"}
 
-        breakdown_list = [
+        daily_totals = [
             {"day": day_map.get(item["weekday"], "Unknown"),
              "total_amount": item["total_amount"] or 0,
              "total_count": item["total_count"]}
@@ -3091,8 +3091,8 @@ class PaymentViewSet(viewsets.ModelViewSet):
         response_data = {
             "week_start": str(start_week),
             "week_end": str(end_week),
-            "totals": totals,  # ✅ weekly grand total
-            "breakdown": breakdown_list,
+            "totals": totals,
+            "daily_totals": daily_totals,  # ✅ each day's total
             "per_patient": list(per_patient),
             "results": paginated_data
         }
@@ -3123,14 +3123,14 @@ class PaymentViewSet(viewsets.ModelViewSet):
 
         queryset = self.filter_custom_queryset(queryset)
 
-        # Totals for the entire year or given month
+        # Totals for all selected months
         totals = queryset.aggregate(total_amount=Sum("payment_amount"), total_count=Count("id"))
 
         # Breakdown per month
         breakdown = queryset.values("created_at__month") \
                             .annotate(total_amount=Sum("payment_amount"), total_count=Count("id"))
 
-        results = [
+        monthly_totals = [
             {"month": calendar.month_name[item["created_at__month"]],
              "total_amount": item["total_amount"] or 0,
              "total_count": item["total_count"]}
@@ -3146,8 +3146,8 @@ class PaymentViewSet(viewsets.ModelViewSet):
 
         response_data = {
             "year": year,
-            "totals": totals,  # ✅ monthly/year grand total
-            "breakdown": results,
+            "totals": totals,
+            "monthly_totals": monthly_totals,  # ✅ each month's total
             "per_patient": list(per_patient),
             "results": paginated_data
         }
